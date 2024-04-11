@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use crate::protocol::body::RsaSecretBody;
 use crate::protocol::NetPacket;
+use rsa::pkcs8::der::Decode;
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
 use rsa::{RsaPrivateKey, RsaPublicKey};
 use sha2::Digest;
-use spki::der::{Any, Decode};
 
 #[derive(Clone)]
 pub struct RsaCipher {
@@ -63,15 +63,11 @@ impl RsaCipher {
             private_key
         };
         let public_key = RsaPublicKey::from(&private_key);
-        match public_key.write_public_key_pem_file("key/public_key.pem", LineEnding::CRLF) {
-            Ok(_) => {}
-            Err(e) => {
+        if let Err(e) = public_key.write_public_key_pem_file("key/public_key.pem", LineEnding::CRLF) {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
-                    format!("failed to write to file 'key/public_key.pem' {}", e),
-                ));
-            }
-        };
+                    format!("failed to write to file 'key/public_key.pem' {}", e)));       
+        }
         let public_key_der = match public_key.to_public_key_der() {
             Ok(public_key_der) => public_key_der.to_vec(),
             Err(e) => {
@@ -92,7 +88,7 @@ impl RsaCipher {
         })
     }
     pub fn finger_(public_key_der: &[u8]) -> io::Result<String> {
-        match rsa::pkcs8::SubjectPublicKeyInfo::<Any, ()>::from_der(public_key_der) {
+        match rsa::pkcs8::SubjectPublicKeyInfo::from_der(public_key_der) {
             Ok(spki) => match spki.fingerprint_base64() {
                 Ok(finger) => Ok(finger),
                 Err(e) => Err(io::Error::new(
@@ -123,7 +119,7 @@ impl RsaCipher {
         match self
             .inner
             .private_key
-            .decrypt(rsa::pkcs1v15::Pkcs1v15Encrypt, net_packet.payload())
+            .decrypt(rsa::PaddingScheme::PKCS1v15Encrypt, net_packet.payload())
         {
             Ok(rs) => {
                 let mut nonce_raw = [0; 12];

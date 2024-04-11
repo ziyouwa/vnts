@@ -32,8 +32,8 @@ impl VntsWebService {
         if count >= 3 && time.elapsed() < Duration::from_secs(60) {
             return Err("一分钟后再试".into());
         }
-        if login_data.username == self.config.username
-            && login_data.password == self.config.password
+        if login_data.username == self.config.web_manager.clone().unwrap().username
+            && login_data.password == self.config.web_manager.clone().unwrap().password
         {
             self.login_time.store((time, 0));
             let auth = uuid::Uuid::new_v4().to_string().replace('-', "");

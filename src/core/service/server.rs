@@ -80,7 +80,8 @@ impl ServerPacketHandler {
                 aes.decrypt_ipv4(&mut net_packet)?;
                 Some(aes)
             } else {
-                return Ok(Some(Self::handle_err(Error::NoKey)?));
+                log::info!("没有密钥:{},head={:?}", addr, net_packet.head());
+                return Ok(Some(self.handle_err(addr, source, Error::NoKey)?));
             }
         } else {
             None
@@ -96,10 +97,7 @@ impl ServerPacketHandler {
                     return Ok(None);
                 }
             }
-            Err(e) => {
-                log::warn!("addr={},{:?}", addr, e);
-                Self::handle_err(e)?
-            }
+            Err(e) => self.handle_err(addr, source, e)?,
         };
         self.common_param(&mut packet, source);
         if let Some(aes) = aes {
@@ -119,7 +117,13 @@ impl ServerPacketHandler {
         net_packet.first_set_ttl(MAX_TTL);
         net_packet.set_gateway_flag(true);
     }
-    fn handle_err(e: Error) -> Result<NetPacket<Vec<u8>>> {
+    fn handle_err(
+        &self,
+        addr: SocketAddr,
+        source: Ipv4Addr,
+        e: Error,
+    ) -> Result<NetPacket<Vec<u8>>> {
+        log::warn!("addr={},source={},{:?}", addr, source, e);
         let rs = vec![0u8; 12 + ENCRYPTION_RESERVED];
         let mut packet = NetPacket::new_encrypt(rs)?;
         match e {
@@ -154,6 +158,7 @@ impl ServerPacketHandler {
             }
         }
         packet.set_protocol(Protocol::Error);
+        self.common_param(&mut packet, source);
         Ok(packet)
     }
     async fn handle0<B: AsRef<[u8]> + AsMut<[u8]>>(
@@ -304,7 +309,7 @@ impl ServerPacketHandler {
                 if let Some(ipv4) = ip.to_ipv4_mapped() {
                     ipv4
                 } else {
-                    return Ok(None);
+                    Ipv4Addr::UNSPECIFIED
                 }
             }
         };
@@ -390,6 +395,7 @@ impl ServerPacketHandler {
         let mut virtual_ip = request.virtual_ip;
         // 可分配的ip段
         let ip_range = network + 1..gateway | (!netmask);
+        let timestamp = Local::now().timestamp();
         {
             let mut lock = v.write();
             let mut insert = true;
@@ -467,6 +473,7 @@ impl ServerPacketHandler {
             info.virtual_ip = virtual_ip;
             info.tcp_sender = tcp_sender.clone();
             info.last_join_time = Local::now();
+            info.timestamp = timestamp;
             lock.epoch += 1;
             response.virtual_ip = virtual_ip;
             response.epoch = lock.epoch as u32;
@@ -477,7 +484,7 @@ impl ServerPacketHandler {
             .insert_ip_session((group_id.clone(), virtual_ip), addr)
             .await;
         cache
-            .insert_addr_session(addr, (group_id, virtual_ip))
+            .insert_addr_session(addr, (group_id, virtual_ip, timestamp))
             .await;
         let bytes = response.write_to_bytes()?;
         let rs = vec![0u8; 12 + bytes.len() + ENCRYPTION_RESERVED];
@@ -506,8 +513,9 @@ impl ServerPacketHandler {
     fn handshake<B: AsRef<[u8]>>(
         &self,
         _net_packet: NetPacket<B>,
-        _addr: SocketAddr,
+        addr: SocketAddr,
     ) -> Result<NetPacket<Vec<u8>>> {
+        log::info!("handshake:{}", addr);
         let mut res = message::HandshakeResponse::new();
         res.version = env!("CARGO_PKG_VERSION").to_string();
         if let Some(rsp_cipher) = &self.rsa_cipher {
@@ -528,6 +536,7 @@ impl ServerPacketHandler {
         net_packet: NetPacket<B>,
         addr: SocketAddr,
     ) -> Result<NetPacket<Vec<u8>>> {
+        log::info!("secret_handshake:{}", addr);
         if let Some(rsp_cipher) = &self.rsa_cipher {
             let source = net_packet.source();
             let rsa_secret_body = rsp_cipher.decrypt(&net_packet)?;
@@ -580,18 +589,17 @@ impl ServerPacketHandler {
         client_status_info: message::ClientStatusInfo,
         context: &Context,
     ) {
-        let status_info = ClientStatusInfo {
-            p2p_list: client_status_info
-                .p2p_list
-                .iter()
-                .map(|v| v.next_ip.into())
-                .collect(),
-            is_cone: client_status_info.nat_type.enum_value_or_default()
-                == message::PunchNatType::Cone,
-            update_time: Local::now(),
-            ..ClientStatusInfo::default()
-        };
-
+        let mut status_info = ClientStatusInfo::default();
+        status_info.p2p_list = client_status_info
+            .p2p_list
+            .iter()
+            .map(|v| v.next_ip.into())
+            .collect();
+        status_info.up_stream = client_status_info.up_stream;
+        status_info.down_stream = client_status_info.down_stream;
+        status_info.is_cone =
+            client_status_info.nat_type.enum_value_or_default() == message::PunchNatType::Cone;
+        status_info.update_time = Local::now();
         if let Some(v) = context
             .network_info
             .write()

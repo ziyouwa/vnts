@@ -26,7 +26,7 @@ pub enum Error {
     #[error("Invalid Ip")]
     InvalidIp,
     #[error("Other")]
-    Other(String),
+    Other(String)
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

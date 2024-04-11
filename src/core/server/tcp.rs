@@ -51,17 +51,7 @@ pub async fn start(tcp: TcpListener, handler: PacketHandler) -> io::Result<()> {
             }
         }
     }
-    // if let Err(e) = accept(tcp, handler).await {
-    //     log::error!("accept {:?}", e);
-    // }
 }
-
-// async fn accept(tcp: TcpListener, handler: PacketHandler) -> io::Result<()> {
-//     loop {
-//         let (stream, addr) = tcp.accept().await?;
-//         stream_handle(stream, addr, handler.clone()).await;
-//     }
-// }
 
 async fn stream_handle(stream: TcpStream, addr: SocketAddr, handler: PacketHandler) {
     let (r, mut w) = stream.into_split();

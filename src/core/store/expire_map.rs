@@ -52,12 +52,12 @@ where
     pub async fn insert(&self, k: K, val: V, expire: Duration) {
         let instant = Instant::now().add(expire);
         {
-            let mut write_guard = self.base.write();
             let value = Value {
                 val,
                 deadline: AtomicCell::new(instant),
                 expire,
             };
+            let mut write_guard = self.base.write();
             write_guard.insert(k.clone(), value);
         }
         //投入过期监听

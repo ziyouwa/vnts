@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 packet = { path = "./packet" }
-clap = { version = "=4", features = ["derive"] }
+clap = { version = "=4.0.32", features = ["derive"] }
 log = "0.4"
 log4rs = "1.3"
 dirs = "5"
@@ -15,14 +15,14 @@ crossbeam = "0.8"
 parking_lot = "0.12"
 dashmap = "5.5"
 
-rsa = { version = "0.9", features = ["pkcs5"] }
-spki = { version = "0.7", features = ["fingerprint", "alloc", "base64"] }
+rsa = { version = "0.7.2", features = [] }
+spki = { version = "0.6.0", features = ["fingerprint", "alloc"] }
 aes-gcm = { version = "0.10.2", optional = true }
 ring = { version = "0.17", optional = true }
 rand = "0.8"
 sha2 = { version = "0.10", features = ["oid"] }
 colored = "2.1"
-
+anyhow = "1"
 thiserror = "1"
 chrono = "0.4"
 lazy_static = "1.4.0"
@@ -32,6 +32,7 @@ tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
 tokio-util = { version = "0.7", features = ["full"] }
 socket2 = { version = "0.5", features = ["all"] }
+env_logger = "0.11"
 
 actix-web = { version = "4.5", optional = true }
 actix-files = { version = "0.6", optional = true }
@@ -41,7 +42,7 @@ futures-util = "0.3"
 uuid = { version = "1.8", features = ["v4"] }
 
 [features]
-default = ["normal","ring-cipher","web"]
+default = ["normal"]
 normal = ["aes-gcm"]
 ring-cipher = ["ring"]
 web = ["actix-web", "actix-files"]

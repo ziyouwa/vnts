@@ -589,17 +589,19 @@ impl ServerPacketHandler {
         client_status_info: message::ClientStatusInfo,
         context: &Context,
     ) {
-        let mut status_info = ClientStatusInfo::default();
-        status_info.p2p_list = client_status_info
-            .p2p_list
-            .iter()
-            .map(|v| v.next_ip.into())
-            .collect();
-        status_info.up_stream = client_status_info.up_stream;
-        status_info.down_stream = client_status_info.down_stream;
-        status_info.is_cone =
-            client_status_info.nat_type.enum_value_or_default() == message::PunchNatType::Cone;
-        status_info.update_time = Local::now();
+        let status_info = ClientStatusInfo {
+            p2p_list: client_status_info
+                .p2p_list
+                .iter()
+                .map(|v| v.next_ip.into())
+                .collect(),
+            up_stream: client_status_info.up_stream,
+            down_stream: client_status_info.down_stream,
+            is_cone: client_status_info.nat_type.enum_value_or_default()
+                == message::PunchNatType::Cone,
+            update_time: Local::now(),
+            // ..ClientStatusInfo::default()  所有的字段都已被赋值
+        };
         if let Some(v) = context
             .network_info
             .write()
@@ -609,6 +611,7 @@ impl ServerPacketHandler {
             v.client_status = Some(status_info);
         }
     }
+
     fn clients_info(
         clients: &HashMap<u32, ClientInfo>,
         current_ip: u32,
@@ -616,13 +619,12 @@ impl ServerPacketHandler {
         clients
             .iter()
             .filter(|&(_, dev)| dev.virtual_ip != current_ip)
-            .map(|(_, device_info)| {
-                let mut dev = message::DeviceInfo::new();
-                dev.virtual_ip = device_info.virtual_ip;
-                dev.name = device_info.name.clone();
-                dev.device_status = if device_info.online { 0 } else { 1 };
-                dev.client_secret = device_info.client_secret;
-                dev
+            .map(|(_, device_info)| message::DeviceInfo {
+                virtual_ip: device_info.virtual_ip,
+                name: device_info.name.clone(),
+                device_status: if device_info.online { 0 } else { 1 },
+                client_secret: device_info.client_secret,
+                ..message::DeviceInfo::default()
             })
             .collect()
     }

@@ -10,25 +10,37 @@ use crate::core::store::cache::AppCache;
 
 mod tcp;
 mod udp;
-
 #[cfg(feature = "web")]
 mod web;
 
 pub async fn start(
     udp: std::net::UdpSocket,
     tcp: std::net::TcpListener,
-    #[cfg(feature = "web")] http: Option<std::net::TcpListener>,
-    config: ConfigInfo,
-    rsa_cipher: Option<RsaCipher>,
+    #[cfg(feature = "web")] 
+    http: Option<std::net::TcpListener>,
+    config: ConfigInfo
 ) -> io::Result<()> {
     let udp = Arc::new(UdpSocket::from_std(udp)?);
     let cache = AppCache::new();
+    
+    let rsa = match RsaCipher::new() {
+        Ok(rsa) => {
+            println!("密钥指纹: {}", rsa.finger());
+            Some(rsa)
+        }
+        Err(e) => {
+            log::error!("获取密钥错误：{:?}", e);
+            panic!("获取密钥错误:{}", e);
+        }
+    };
+
     let handler = PacketHandler::new(
-        cache.clone(),
-        config.clone(),
-        rsa_cipher.clone(),
+        cache,
+        config,
+        rsa,
         udp.clone(),
     );
+    
     let tcp_handle = tokio::spawn(tcp::start(TcpListener::from_std(tcp)?, handler.clone()));
     let udp_handle = tokio::spawn(udp::start(udp, handler.clone()));
     #[cfg(feature = "web")]

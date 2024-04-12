@@ -35,7 +35,7 @@ impl PacketHandler {
             udp.clone(),
         );
         let server =
-            ServerPacketHandler::new(cache.clone(), config.clone(), rsa_cipher.clone(), udp);
+            ServerPacketHandler::new(cache, config, rsa_cipher, udp);
         Self { client, server }
     }
 }

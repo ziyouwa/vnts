@@ -76,7 +76,7 @@ impl ServerPacketHandler {
         }
         // 解密
         let aes = if net_packet.is_encrypt() {
-            if let Some(aes) = self.cache.cipher_session.get(&addr) {
+            if let Some(aes) = self.cache.cipher_session.get_and_renew(&addr) {
                 aes.decrypt_ipv4(&mut net_packet)?;
                 Some(aes)
             } else {

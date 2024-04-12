@@ -41,7 +41,7 @@ impl AppCache {
                     Ipv4Addr::from(ip),
                     addr
                 );
-                if let Some(v) = virtual_network_.get(&group_id) {
+                if let Some(v) = virtual_network_.get_and_renew(&group_id) {
                     let mut lock = v.write();
                     if let Some(dev) = lock.clients.get(&ip) {
                         if dev.address == addr {
@@ -63,7 +63,7 @@ impl AppCache {
                     timestamp
                 );
 
-                if let Some(v) = virtual_network_.get(&group) {
+                if let Some(v) = virtual_network_.get_and_renew(&group) {
                     let mut lock = v.write();
                     if let Some(item) = lock.clients.get_mut(&virtual_ip) {
                         if item.address != addr || item.timestamp != timestamp {
@@ -96,13 +96,13 @@ impl AppCache {
 
 impl AppCache {
     pub fn get_context(&self, addr: &SocketAddr) -> Option<Context> {
-        if let Some((group, virtual_ip, _)) = self.addr_session.get(addr) {
+        if let Some((group, virtual_ip, _)) = self.addr_session.get_and_renew(addr) {
             let k = (group, virtual_ip);
-            self.ip_session.get(&k)?;
+            self.ip_session.get_and_renew(&k)?;
             let (group, virtual_ip) = k;
             return self
                 .virtual_network
-                .get(&group)
+                .get_and_renew(&group)
                 .map(|network_info| Context {
                     network_info,
                     group,

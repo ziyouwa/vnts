@@ -1,6 +1,5 @@
 use std::{io::Write, path::PathBuf};
 
-use cipher::RsaCipher;
 use config::ConfigInfo;
 
 use std::net::{TcpListener, UdpSocket};
@@ -69,6 +68,7 @@ async fn main() -> Result<()> {
     // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
     let config = ConfigInfo::new_with_options();
+    
     log_init(&config.log_path);
     log::info!("Config: {:?}", config.clone());
 
@@ -84,24 +84,12 @@ async fn main() -> Result<()> {
         create_tcp(web.web_port).unwrap()
     });
 
-    let rsa = match RsaCipher::new() {
-        Ok(rsa) => {
-            println!("密钥指纹: {}", rsa.finger());
-            Some(rsa)
-        }
-        Err(e) => {
-            log::error!("获取密钥错误：{:?}", e);
-            panic!("获取密钥错误:{}", e);
-        }
-    };
-
     core::start(
         udp,
         tcp,
         #[cfg(feature = "web")]
         http,
-        config,
-        rsa,
+        config
     )
     .await
     .map_err(|e| anyhow::anyhow!(e))

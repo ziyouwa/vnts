@@ -66,9 +66,9 @@ where
             .await
             .unwrap();
     }
-    pub fn get(&self, k: &K) -> Option<V> {
+    pub fn get_and_renew(&self, k: &K) -> Option<V> {
         if let Some(v) = self.base.read().get(k) {
-            // 延长过期时间
+            // 刷新过期时间
             v.deadline.store(Instant::now().add(v.expire));
             Some(v.val.clone())
         } else {
@@ -81,8 +81,8 @@ where
     fn expire_call(&self, k: &K) -> Op<K, V> {
         let mut write_guard = self.base.write();
         if let Some(v) = write_guard.get(k) {
-            let now = Instant::now();
             let instant = v.deadline.load();
+            let now = Instant::now();
             if instant >= now {
                 // 过期时间更新了
                 return Op::Reset(instant);
@@ -197,14 +197,14 @@ where
             }
         }
 
-        if binary_heap.is_empty() {
-            //任务队列为空时陷入等待
-            if let Some(task) = receiver.recv().await {
-                binary_heap.push(task);
-            } else {
-                return;
-            }
-        }
+        // if binary_heap.is_empty() {
+        //     //任务队列为空时陷入等待
+        //     if let Some(task) = receiver.recv().await {
+        //         binary_heap.push(task);
+        //     } else {
+        //         return;
+        //     }
+        // }
     }
 }
 

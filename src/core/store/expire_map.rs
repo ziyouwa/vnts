@@ -31,7 +31,8 @@ impl<K, V> ExpireMap<K, V> {
         V: Clone + Sync + Send + 'static,
     {
         let (sender, mut receiver) = mpsc::channel::<DelayedTask<_>>(64);
-        let base: Arc<RwLock<HashMap<K, Value<V>>>> = Arc::new(RwLock::new(HashMap::with_capacity(128)));
+        let base: Arc<RwLock<HashMap<K, Value<V>>>> =
+            Arc::new(RwLock::new(HashMap::with_capacity(128)));
         let cloned_base = base.clone();
         tokio::spawn(async move {
             while let Ok(task) = receiver.try_recv() {
@@ -71,11 +72,13 @@ where
             write_guard.insert(k.clone(), value);
         }
         //投入过期监听
-        if let Err(e) = self.sender.send(DelayedTask { k, time: instant }).await {
+        if let Err(e) =
+            tokio::time::timeout(expire, self.sender.send(DelayedTask { k, time: instant })).await
+        {
             log::error!("发送失败:{:?}", e);
         }
     }
-    pub fn get_and_renew(&self, k: &K) -> Option<V> {        
+    pub fn get_and_renew(&self, k: &K) -> Option<V> {
         if let Some(v) = self.base.read().get(k) {
             // 刷新过期时间
             v.deadline.store(Instant::now().add(v.expire));

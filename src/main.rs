@@ -52,7 +52,7 @@ appenders:
         count: 5
 
 root:
-  level: info
+  level: debug
   appenders:
     - rolling_file",
                 log_path, log_path

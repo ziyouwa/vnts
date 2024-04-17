@@ -48,7 +48,7 @@ impl VntsWebService {
         }
     }
     pub fn check_auth(&self, auth: &String) -> bool {
-        self.cache.auth_map.get(auth).is_some()
+        self.cache.auth_map.get_and_renew(auth).is_some()
     }
     pub fn group_list(&self) -> GroupList {
         let group_list: Vec<String> = self
@@ -61,7 +61,7 @@ impl VntsWebService {
         GroupList { group_list }
     }
     pub fn group_info(&self, group: String) -> Option<NetworkInfo> {
-        if let Some(info) = self.cache.virtual_network.get(&group) {
+        if let Some(info) = self.cache.virtual_network.get_and_renew(&group) {
             let guard = info.read();
             let mut network = NetworkInfo::new(
                 guard.network_ip.into(),

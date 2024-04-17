@@ -35,8 +35,8 @@ pub async fn start(
     };
 
     let handler = PacketHandler::new(
-        cache,
-        config,
+        cache.clone(),
+        config.clone(),
         rsa,
         udp.clone(),
     );

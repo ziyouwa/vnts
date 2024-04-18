@@ -110,11 +110,11 @@ where
                     expire,
                 };
                 write_guard.insert(k.clone(), value);
-                (val, Some(deadline))
+                (val, Some((expire, deadline)))
             }
         };
-        if let Some(time) = time {
-            if let Err(e) = self.sender.send(DelayedTask { k, time }).await {
+        if let Some((expire, time)) = time {
+            if let Err(e) = tokio::time::timeout(expire, self.sender.send(DelayedTask { k, time })).await {
                 log::error!("发送失败:{:?}", e);
             }
         }

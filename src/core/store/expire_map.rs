@@ -114,7 +114,9 @@ where
             }
         };
         if let Some((expire, time)) = time {
-            if let Err(e) = tokio::time::timeout(expire, self.sender.send(DelayedTask { k, time })).await {
+            if let Err(e) =
+                tokio::time::timeout(expire, self.sender.send(DelayedTask { k, time })).await
+            {
                 log::error!("发送失败:{:?}", e);
             }
         }
@@ -152,5 +154,22 @@ impl<K> PartialOrd for DelayedTask<K> {
 impl<K> Ord for DelayedTask<K> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.time.cmp(&other.time).reverse()
+    }
+}
+
+#[cfg(test)]
+
+mod test {
+    use super::*;
+
+    fn f(k: &str, v: &str) {
+        println!("{k:?}-{:?}", v);
+    }
+    #[tokio::test]
+    async fn test_expire_map() {
+        let t1 = ExpireMap::new(f);
+        t1.insert("a", "v1", Duration::from_secs(2)).await;
+        println!("a: {}", t1.base.read().get("a").unwrap().val);
+        tokio::time::sleep(Duration::from_secs(4)).await;
     }
 }

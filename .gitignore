@@ -1,6 +1,6 @@
 target/*
 src/proto/*
-Cargo.lock
+src/generated_serial_number.rs
 key/*
 log/*
 .vscode/*

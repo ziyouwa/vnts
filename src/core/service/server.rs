@@ -20,9 +20,7 @@ use crate::proto::message;
 use crate::proto::message::{DeviceList, RegistrationRequest, RegistrationResponse};
 use crate::protocol::body::ENCRYPTION_RESERVED;
 use crate::protocol::ip_turn_packet::BroadcastPacket;
-use crate::protocol::{
-    control_packet, error_packet, service_packet, NetPacket, Protocol, Version, MAX_TTL,
-};
+use crate::protocol::{control_packet, error_packet, service_packet, NetPacket, Protocol, MAX_TTL};
 use crate::{protocol, ConfigInfo};
 
 #[derive(Clone)]
@@ -111,7 +109,7 @@ impl ServerPacketHandler {
         source: Ipv4Addr,
     ) {
         //设置通用参数
-        net_packet.set_version(Version::V1);
+        net_packet.set_default_version();
         net_packet.set_destination(source);
         net_packet.set_source(self.config.gateway);
         net_packet.first_set_ttl(MAX_TTL);
@@ -188,7 +186,7 @@ impl ServerPacketHandler {
         match net_packet.protocol() {
             Protocol::Service => {
                 match protocol::service_packet::Protocol::from(net_packet.transport_protocol()) {
-                    service_packet::Protocol::PollDeviceList => {
+                    service_packet::Protocol::PullDeviceList => {
                         //拉取网段设备信息
                         return self.poll_device_list(net_packet, addr, &context);
                     }
@@ -512,16 +510,20 @@ fn check_reg(request: &RegistrationRequest) -> Result<()> {
 impl ServerPacketHandler {
     fn handshake<B: AsRef<[u8]>>(
         &self,
-        _net_packet: NetPacket<B>,
+        net_packet: NetPacket<B>,
         addr: SocketAddr,
     ) -> Result<NetPacket<Vec<u8>>> {
-        log::info!("handshake:{}", addr);
+        let req = message::HandshakeRequest::parse_from_bytes(net_packet.payload())?;
+        log::info!("handshake:{},{}", addr, req);
         let mut res = message::HandshakeResponse::new();
         res.version = env!("CARGO_PKG_VERSION").to_string();
         if let Some(rsp_cipher) = &self.rsa_cipher {
-            res.public_key.extend_from_slice(rsp_cipher.public_key());
-            res.secret = true;
             res.key_finger = rsp_cipher.finger();
+            if res.key_finger != req.key_finger {
+                //指纹不相同则回应公钥，这有助于重连减少数据传输
+                res.public_key.extend_from_slice(rsp_cipher.public_key());
+            }
+            res.secret = true;
         }
         let bytes = res.write_to_bytes()?;
         let vec = vec![0u8; 12 + bytes.len() + ENCRYPTION_RESERVED];
@@ -589,19 +591,18 @@ impl ServerPacketHandler {
         client_status_info: message::ClientStatusInfo,
         context: &Context,
     ) {
-        let status_info = ClientStatusInfo {
-            p2p_list: client_status_info
-                .p2p_list
-                .iter()
-                .map(|v| v.next_ip.into())
-                .collect(),
-            up_stream: client_status_info.up_stream,
-            down_stream: client_status_info.down_stream,
-            is_cone: client_status_info.nat_type.enum_value_or_default()
-                == message::PunchNatType::Cone,
-            update_time: Local::now(),
-            // ..ClientStatusInfo::default()  所有的字段都已被赋值
-        };
+        let mut status_info = ClientStatusInfo::default();
+        let iplist = &mut status_info.p2p_list;
+        *iplist = client_status_info
+            .p2p_list
+            .iter()
+            .map(|v| v.next_ip.into())
+            .collect();
+        status_info.up_stream = client_status_info.up_stream;
+        status_info.down_stream = client_status_info.down_stream;
+        status_info.is_cone =
+            client_status_info.nat_type.enum_value_or_default() == message::PunchNatType::Cone;
+        status_info.update_time = Local::now();
         if let Some(v) = context
             .network_info
             .write()

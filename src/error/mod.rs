@@ -1,8 +1,8 @@
 #![allow(dead_code, clippy::enum_variant_names)]
 
-use std::io;
+use std::{io, sync::mpsc::RecvError};
 
-use crossbeam::channel::RecvError;
+// use crossbeam::channel::RecvError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

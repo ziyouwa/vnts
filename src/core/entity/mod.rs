@@ -7,7 +7,7 @@ use tokio::sync::mpsc::Sender;
 #[derive(Default)]
 pub struct NetworkInfo {
     // 组网编号
-    pub group: String,
+    // pub group: String,
     // 网段
     pub network_ip: u32,
     // 掩码
@@ -28,7 +28,6 @@ impl NetworkInfo {
             gateway_ip,
             epoch: 0,
             clients: Default::default(),
-            group: "".to_string(),
         }
     }
 }

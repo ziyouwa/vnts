@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::io;
 
+use log::warn;
 use sha2::Digest;
 
 use crate::protocol::NetPacket;
@@ -37,6 +38,7 @@ impl Finger {
         let payload = net_packet.payload();
         let finger = self.calculate_finger(&nonce_raw, &payload[..payload_len - 12]);
         if finger[..] != payload[payload_len - 12..] {
+            warn!("finger: {:?}, payload_finger: {:?}", &finger, &payload[payload_len - 12..]);
             return Err(io::Error::new(io::ErrorKind::Other, "finger err"));
         }
         Ok(())

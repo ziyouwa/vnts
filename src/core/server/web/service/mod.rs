@@ -32,23 +32,24 @@ impl VntsWebService {
         if count >= 3 && time.elapsed() < Duration::from_secs(60) {
             return Err("一分钟后再试".into());
         }
-        if login_data.username == self.config.web_manager.clone().unwrap().username
-            && login_data.password == self.config.web_manager.clone().unwrap().password
-        {
-            self.login_time.store((time, 0));
-            let auth = uuid::Uuid::new_v4().to_string().replace('-', "");
-            self.cache
-                .auth_map
-                .insert(auth.clone(), (), Duration::from_secs(3600 * 24))
-                .await;
-            Ok(auth)
-        } else {
-            self.login_time.store((Instant::now(), count + 1));
-            Err("账号或密码错误".into())
+        if let Some(ref web_manager) = self.config.web_manager {
+            if login_data.username == web_manager.username
+                && login_data.password == web_manager.password
+            {
+                self.login_time.store((time, 0));
+                let auth = uuid::Uuid::new_v4().to_string().replace('-', "");
+                self.cache
+                    .auth_map
+                    .insert(auth.clone(), (), Duration::from_secs(3600 * 24))
+                    .await;
+                return Ok(auth);
+            }
         }
+        self.login_time.store((Instant::now(), count + 1));
+        Err("账号或密码错误".into())
     }
     pub fn check_auth(&self, auth: &String) -> bool {
-        self.cache.auth_map.get_and_renew(auth).is_some()
+        self.cache.auth_map.get(auth).is_some()
     }
     pub fn group_list(&self) -> GroupList {
         let group_list: Vec<String> = self
@@ -61,7 +62,7 @@ impl VntsWebService {
         GroupList { group_list }
     }
     pub fn group_info(&self, group: String) -> Option<NetworkInfo> {
-        if let Some(info) = self.cache.virtual_network.get_and_renew(&group) {
+        if let Some(info) = self.cache.virtual_network.get(&group) {
             let guard = info.read();
             let mut network = NetworkInfo::new(
                 guard.network_ip.into(),
@@ -79,16 +80,19 @@ impl VntsWebService {
                         }
                     }
                 };
-                let status_info = into.client_status.as_ref().map(|client_status| ClientStatusInfo {
-                        p2p_list: client_status.p2p_list.clone(),
-                        up_stream: client_status.up_stream,
-                        down_stream: client_status.down_stream,
-                        is_cone: client_status.is_cone,
-                        update_time: format!(
-                            "{}",
-                            client_status.update_time.format("%Y-%m-%d %H:%M:%S")
-                        ),
-                    });
+                let status_info =
+                    into.client_status
+                        .as_ref()
+                        .map(|client_status| ClientStatusInfo {
+                            p2p_list: client_status.p2p_list.clone(),
+                            up_stream: client_status.up_stream,
+                            down_stream: client_status.down_stream,
+                            is_cone: client_status.is_cone,
+                            update_time: format!(
+                                "{}",
+                                client_status.update_time.format("%Y-%m-%d %H:%M:%S")
+                            ),
+                        });
 
                 let client_info = ClientInfo {
                     device_id: into.device_id.clone(),

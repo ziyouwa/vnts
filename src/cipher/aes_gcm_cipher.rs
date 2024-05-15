@@ -50,7 +50,7 @@ impl Aes256GcmCipher {
             .finger
             .calculate_finger(&nonce_raw, secret_body.en_body());
         if finger != secret_body.finger() {
-            return Err(io::Error::new(io::ErrorKind::Other, "finger err"));
+            return Err(io::Error::new(io::ErrorKind::Other, "finger err(aes)"));
         }
 
         let tag: GenericArray<u8, U16> = Tag::clone_from_slice(tag);

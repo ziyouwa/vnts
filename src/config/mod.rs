@@ -44,7 +44,7 @@ pub struct Options {
     #[cfg(feature = "web")]
     #[command(flatten)]
     pub web_manager: Option<WebManager>,
-    
+
     /// 显示此帮助信息并退出
     #[arg(action = clap::ArgAction::Help, short, long)]
     // #[arg(help = "打印帮助信息")]
@@ -145,23 +145,20 @@ impl ConfigInfo {
             broadcast: calculate_broadcast(gateway, netmask),
             finger: args.finger,
             #[cfg(feature = "web")]
-            web_manager: if args.web_manager.is_some() && args.web_manager.clone().unwrap().web_port == 0 {
+            web_manager: if args.web_manager.is_some()
+                && args.web_manager.clone().unwrap().web_port == 0
+            {
                 None
             } else {
                 base.web_manager
             },
-            log_path: if args.log_path.is_some()  {
+            log_path: if args.log_path.is_some() {
                 args.log_path
             } else {
                 base.log_path
-            }
+            },
         }
     }
-
-    // pub fn run_service(mut service: Box<dyn Service>, threads: usize) {
-    //     let _ = mut service;
-        
-    // }
 }
 
 impl Default for ConfigInfo {
@@ -182,7 +179,7 @@ impl Default for ConfigInfo {
                 password: "admin".to_string(),
                 web_port: 29870,
             }),
-            log_path: Some("./log".to_string())
+            log_path: Some("./log".to_string()),
         }
     }
 }

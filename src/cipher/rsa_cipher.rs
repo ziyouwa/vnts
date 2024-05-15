@@ -64,8 +64,8 @@ impl RsaCipher {
         };
         let public_key = RsaPublicKey::from(&private_key);
         if let Err(e) = public_key.write_public_key_pem_file(pub_key_path, LineEnding::CRLF) {
-            log::warn!("保存公钥文件失败:{}", e);
-        };
+            log::warn!("保存公钥文件失败:{}", e);     
+        }
         let public_key_der = match public_key.to_public_key_der() {
             Ok(public_key_der) => public_key_der.to_vec(),
             Err(e) => {
@@ -133,7 +133,7 @@ impl RsaCipher {
                 hasher.update(nonce_raw);
                 let key: [u8; 32] = hasher.finalize().into();
                 if secret_body.finger() != &key[16..] {
-                    return Err(io::Error::new(io::ErrorKind::Other, "finger err"));
+                    return Err(io::Error::new(io::ErrorKind::Other, "finger err(rsa)"));
                 }
                 Ok(secret_body)
             }

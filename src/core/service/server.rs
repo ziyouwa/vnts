@@ -74,7 +74,7 @@ impl ServerPacketHandler {
         }
         // 解密
         let aes = if net_packet.is_encrypt() {
-            if let Some(aes) = self.cache.cipher_session.get_and_renew(&addr) {
+            if let Some(aes) = self.cache.cipher_session.get(&addr) {
                 aes.decrypt_ipv4(&mut net_packet)?;
                 Some(aes)
             } else {
@@ -592,8 +592,7 @@ impl ServerPacketHandler {
         context: &Context,
     ) {
         let mut status_info = ClientStatusInfo::default();
-        let iplist = &mut status_info.p2p_list;
-        *iplist = client_status_info
+        status_info.p2p_list = client_status_info
             .p2p_list
             .iter()
             .map(|v| v.next_ip.into())
@@ -612,7 +611,6 @@ impl ServerPacketHandler {
             v.client_status = Some(status_info);
         }
     }
-
     fn clients_info(
         clients: &HashMap<u32, ClientInfo>,
         current_ip: u32,
@@ -620,12 +618,13 @@ impl ServerPacketHandler {
         clients
             .iter()
             .filter(|&(_, dev)| dev.virtual_ip != current_ip)
-            .map(|(_, device_info)| message::DeviceInfo {
-                virtual_ip: device_info.virtual_ip,
-                name: device_info.name.clone(),
-                device_status: if device_info.online { 0 } else { 1 },
-                client_secret: device_info.client_secret,
-                ..message::DeviceInfo::default()
+            .map(|(_, device_info)| {
+                let mut dev = message::DeviceInfo::new();
+                dev.virtual_ip = device_info.virtual_ip;
+                dev.name = device_info.name.clone();
+                dev.device_status = if device_info.online { 0 } else { 1 };
+                dev.client_secret = device_info.client_secret;
+                dev
             })
             .collect()
     }

@@ -13,9 +13,15 @@ use tokio::sync::mpsc::{channel, Sender};
 use tokio::sync::Notify;
 use tokio::signal;
 
-pub async fn start(tcp: TcpListener, handler: PacketHandler) -> io::Result<()> {
-    let state = Arc::new((AtomicUsize::new(0), Notify::new()));
+pub async fn start(tcp: TcpListener, handler: PacketHandler) {
+    if let Err(e) = accept(tcp, handler).await {
+        log::error!("accept {:?}", e);
+    }
+}
 
+async fn accept(tcp: TcpListener, handler: PacketHandler) -> io::Result<()> {
+    let state = Arc::new((AtomicUsize::new(0), Notify::new()));
+    
     loop {
         select! {
             handle = tcp.accept() =>{
@@ -25,7 +31,7 @@ pub async fn start(tcp: TcpListener, handler: PacketHandler) -> io::Result<()> {
                 state.0.fetch_add(1, Ordering::Relaxed);
                 // log::info!("State++: {state:?}");
 
-                let _ = stream.set_nodelay(true);
+        let _ = stream.set_nodelay(true);
                 stream_handle(stream, addr, handler.clone()).await;
                 
                 if state.0.fetch_sub(1, Ordering::Relaxed) == 1 {

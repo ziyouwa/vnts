@@ -63,11 +63,8 @@ impl RsaCipher {
             private_key
         };
         let public_key = RsaPublicKey::from(&private_key);
-        match public_key.write_public_key_pem_file(pub_key_path, LineEnding::CRLF) {
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!("保存公钥文件失败:{}", e);
-            }
+        if let Err(e) = public_key.write_public_key_pem_file(pub_key_path, LineEnding::CRLF) {
+            log::warn!("保存公钥文件失败:{}", e);
         };
         let public_key_der = match public_key.to_public_key_der() {
             Ok(public_key_der) => public_key_der.to_vec(),

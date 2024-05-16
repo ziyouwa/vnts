@@ -9,7 +9,7 @@ use crate::config::ConfigInfo;
 use crate::core::service::client::ClientPacketHandler;
 use crate::core::service::server::ServerPacketHandler;
 use crate::core::store::cache::AppCache;
-use crate::error::*;
+use crate::{app_root, error::*};
 use crate::protocol::NetPacket;
 
 pub mod client;
@@ -22,20 +22,26 @@ pub struct PacketHandler {
 }
 
 impl PacketHandler {
-    pub fn new(
-        cache: AppCache,
-        config: ConfigInfo,
-        rsa_cipher: Option<RsaCipher>,
-        udp: Arc<UdpSocket>,
-    ) -> Self {
+    pub fn new(cache: AppCache, config: ConfigInfo, udp: Arc<UdpSocket>) -> Self {
+        let rsa = match RsaCipher::new(app_root()) {
+            Ok(rsa) => {
+                println!("密钥指纹: {}", rsa.finger());
+                Some(rsa)
+            }
+            Err(e) => {
+                log::error!("获取密钥错误：{:?}", e);
+                panic!("获取密钥错误:{}", e);
+            }
+        };
+
         let client = ClientPacketHandler::new(
             cache.clone(),
             config.clone(),
-            rsa_cipher.clone(),
+            rsa.clone(),
             udp.clone(),
         );
         let server =
-            ServerPacketHandler::new(cache.clone(), config.clone(), rsa_cipher.clone(), udp);
+            ServerPacketHandler::new(cache.clone(), config.clone(), rsa, udp);
         Self { client, server }
     }
 }

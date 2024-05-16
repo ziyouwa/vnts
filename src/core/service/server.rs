@@ -1,4 +1,5 @@
 use chrono::Local;
+use log::error;
 use packet::icmp::{icmp, Kind};
 use packet::ip::ipv4;
 use packet::ip::ipv4::packet::IpV4Packet;
@@ -494,14 +495,18 @@ impl ServerPacketHandler {
     }
 }
 
+#[inline(always)]
 fn check_reg(request: &RegistrationRequest) -> Result<()> {
     if request.token.is_empty() || request.token.len() > 128 {
+        error!("Token不符合要求[1~128字符]，实际: {:?}", request.token);
         return Err(Error::Other("group length error".into()));
     }
     if request.device_id.is_empty() || request.device_id.len() > 128 {
+        error!("设备ID不符合要求[1~128字符]，实际: {:?}", request.device_id);
         return Err(Error::Other("device_id length error".into()));
     }
     if request.name.is_empty() || request.name.len() > 128 {
+        error!("设备名称不符合要求[1~128个字符]，实际: {:?}", request.name);
         return Err(Error::Other("name length error".into()));
     }
     Ok(())
@@ -592,7 +597,8 @@ impl ServerPacketHandler {
         context: &Context,
     ) {
         let mut status_info = ClientStatusInfo::default();
-        status_info.p2p_list = client_status_info
+        let plist = &mut status_info.p2p_list;
+        *plist = client_status_info
             .p2p_list
             .iter()
             .map(|v| v.next_ip.into())

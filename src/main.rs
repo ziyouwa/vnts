@@ -105,7 +105,7 @@ async fn main() -> Result<()> {
         tcp,
         #[cfg(feature = "web")]
         http,
-        config,
+        &config,
     )
     .await
     .map_err(|e| anyhow::anyhow!(e))

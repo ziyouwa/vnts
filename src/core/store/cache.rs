@@ -68,9 +68,10 @@ impl AppCache {
                     if let Some(item) = lock.clients.get_mut(&virtual_ip) {
                         if item.address != addr || item.timestamp != timestamp {
                             log::info!(
-                                "无效信息 addr_session eviction group={},virtual_ip={},addr={},timestamp={}",
+                                "无效信息 addr_session eviction group={},virtual_ip={},item_addr={},addr={:?},timestamp={}",
                                 group,
                                 Ipv4Addr::from(virtual_ip),
+                                item.address,
                                 addr,
                                 timestamp
                             );

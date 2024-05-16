@@ -10,7 +10,6 @@ use actix_web_static_files::ResourceFiles;
 
 use crate::core::server::web::service::VntsWebService;
 use crate::core::server::web::vo::{LoginData, ResponseMessage};
-use crate::core::store::cache::AppCache;
 use crate::ConfigInfo;
 
 mod service;
@@ -62,10 +61,9 @@ fn auth_api_set() -> AuthApi {
 
 pub async fn start(
     lst: net::TcpListener,
-    cache: AppCache,
-    config: ConfigInfo,
+    config: &ConfigInfo,
 ) -> std::io::Result<()> {
-    let web_service = VntsWebService::new(cache, config);
+    let web_service = VntsWebService::new(config);
     let auth_api = auth_api_set();
     HttpServer::new(move || {
         let generated = generate();

@@ -17,10 +17,10 @@ pub struct VntsWebService {
 }
 
 impl VntsWebService {
-    pub fn new(cache: AppCache, config: ConfigInfo) -> Self {
+    pub fn new(config: &ConfigInfo) -> Self {
         Self {
-            cache,
-            config,
+            cache: AppCache::new(),
+            config: config.clone(),
             login_time: Arc::new(AtomicCell::new((Instant::now(), 0))),
         }
     }

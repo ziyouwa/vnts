@@ -22,14 +22,13 @@ pub struct ClientPacketHandler {
 
 impl ClientPacketHandler {
     pub fn new(
-        cache: AppCache,
-        config: ConfigInfo,
+        config: &ConfigInfo,
         rsa_cipher: Option<RsaCipher>,
         udp: Arc<UdpSocket>,
     ) -> Self {
         Self {
-            cache,
-            config,
+            cache: AppCache::new(),
+            config: config.clone(),
             rsa_cipher,
             udp,
         }

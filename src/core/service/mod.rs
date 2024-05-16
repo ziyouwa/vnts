@@ -8,9 +8,8 @@ use crate::cipher::RsaCipher;
 use crate::config::ConfigInfo;
 use crate::core::service::client::ClientPacketHandler;
 use crate::core::service::server::ServerPacketHandler;
-use crate::core::store::cache::AppCache;
-use crate::{app_root, error::*};
 use crate::protocol::NetPacket;
+use crate::{app_root, error::*};
 
 pub mod client;
 pub mod server;
@@ -22,26 +21,20 @@ pub struct PacketHandler {
 }
 
 impl PacketHandler {
-    pub fn new(cache: AppCache, config: ConfigInfo, udp: Arc<UdpSocket>) -> Self {
+    pub fn new(config: &ConfigInfo, udp: Arc<UdpSocket>) -> Self {
         let rsa = match RsaCipher::new(app_root()) {
             Ok(rsa) => {
                 println!("密钥指纹: {}", rsa.finger());
                 Some(rsa)
             }
             Err(e) => {
-                log::error!("获取密钥错误：{:?}", e);
-                panic!("获取密钥错误:{}", e);
+                log::error!("程序即将退出！获取密钥错误：{:?}", e);
+                std::process::exit(-1);
             }
         };
 
-        let client = ClientPacketHandler::new(
-            cache.clone(),
-            config.clone(),
-            rsa.clone(),
-            udp.clone(),
-        );
-        let server =
-            ServerPacketHandler::new(cache.clone(), config.clone(), rsa, udp);
+        let client = ClientPacketHandler::new( config, rsa.clone(), udp.clone());
+        let server = ServerPacketHandler::new( config, rsa, udp);
         Self { client, server }
     }
 }

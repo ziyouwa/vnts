@@ -5,7 +5,6 @@ use tokio::net::{TcpListener, UdpSocket};
 
 use crate::config::ConfigInfo;
 use crate::core::service::PacketHandler;
-use crate::core::store::cache::AppCache;
 
 mod tcp;
 mod udp;
@@ -17,17 +16,16 @@ pub async fn start(
     udp: std::net::UdpSocket,
     tcp: std::net::TcpListener,
     #[cfg(feature = "web")] http: Option<std::net::TcpListener>,
-    config: ConfigInfo,
+    config: &ConfigInfo,
 ) -> io::Result<()> {
     let udp = Arc::new(UdpSocket::from_std(udp)?);
-    let cache = AppCache::new();
 
-    let handler = PacketHandler::new(cache.clone(), config.clone(), udp.clone());
+    let handler = PacketHandler::new(config, udp.clone());
     let tcp_handle = tokio::spawn(tcp::start(TcpListener::from_std(tcp)?, handler.clone()));
     let udp_handle = tokio::spawn(udp::start(udp, handler.clone()));
     #[cfg(feature = "web")]
     if let Some(http) = http {
-        if let Err(e) = web::start(http, cache, config).await {
+        if let Err(e) = web::start(http, config).await {
             log::error!("{:?}", e);
         }
     }

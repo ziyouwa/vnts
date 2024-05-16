@@ -50,10 +50,11 @@ impl ServerPacketHandler {
 impl ServerPacketHandler {
     pub async fn handle<B: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        mut net_packet: NetPacket<B>,
+        net_packet: &mut NetPacket<B>,
         addr: SocketAddr,
         tcp_sender: &Option<Sender<Vec<u8>>>,
-    ) -> Result<Option<NetPacket<Vec<u8>>>> {
+    ) -> Result<Option<NetPacket<Vec<u8>>>>
+    where NetPacket<B>: Clone {
         // 握手请求直接处理
         let source = net_packet.source();
         if net_packet.protocol() == Protocol::Service {
@@ -75,7 +76,7 @@ impl ServerPacketHandler {
         // 解密
         let aes = if net_packet.is_encrypt() {
             if let Some(aes) = self.cache.cipher_session.get(&addr) {
-                aes.decrypt_ipv4(&mut net_packet)?;
+                aes.decrypt_ipv4(net_packet)?;
                 Some(aes)
             } else {
                 log::info!("没有密钥:{},head={:?}", addr, net_packet.head());
@@ -161,14 +162,16 @@ impl ServerPacketHandler {
     }
     async fn handle0<B: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &NetPacket<B>,
         addr: SocketAddr,
         tcp_sender: &Option<Sender<Vec<u8>>>,
         server_secret: bool,
-    ) -> Result<Option<NetPacket<Vec<u8>>>> {
+    ) -> Result<Option<NetPacket<Vec<u8>>>>
+    where NetPacket<B>: Clone
+    {
         // 处理不需要连接上下文的请求
         let mut net_packet = match self
-            .not_context(net_packet, addr, tcp_sender, server_secret)
+            .not_context(&net_packet, addr, tcp_sender, server_secret)
             .await
         {
             Ok(rs) => {
@@ -258,11 +261,14 @@ impl ServerPacketHandler {
 impl ServerPacketHandler {
     async fn not_context<B: AsRef<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &NetPacket<B>,
         addr: SocketAddr,
         tcp_sender: &Option<Sender<Vec<u8>>>,
         server_secret: bool,
-    ) -> result::Result<Result<Option<NetPacket<Vec<u8>>>>, NetPacket<B>> {
+    
+    ) -> result::Result<Result<Option<NetPacket<Vec<u8>>>>, NetPacket<B>> 
+    where NetPacket<B>: Clone
+    {
         if net_packet.protocol() == Protocol::Service {
             if let service_packet::Protocol::RegistrationRequest =
                 protocol::service_packet::Protocol::from(net_packet.transport_protocol())
@@ -279,7 +285,7 @@ impl ServerPacketHandler {
                 return Ok(self.control_addr_request(addr));
             }
         }
-        Err(net_packet)
+        Err(net_packet.clone())
     }
 }
 
@@ -324,7 +330,7 @@ impl ServerPacketHandler {
 impl ServerPacketHandler {
     async fn register<B: AsRef<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &NetPacket<B>,
         addr: SocketAddr,
         tcp_sender: &Option<Sender<Vec<u8>>>,
         server_secret: bool,
@@ -514,7 +520,7 @@ fn check_reg(request: &RegistrationRequest) -> Result<()> {
 impl ServerPacketHandler {
     fn handshake<B: AsRef<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &NetPacket<B>,
         addr: SocketAddr,
     ) -> Result<NetPacket<Vec<u8>>> {
         let req = message::HandshakeRequest::parse_from_bytes(net_packet.payload())?;
@@ -539,7 +545,7 @@ impl ServerPacketHandler {
     }
     async fn secret_handshake<B: AsRef<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &NetPacket<B>,
         addr: SocketAddr,
     ) -> Result<NetPacket<Vec<u8>>> {
         log::info!("secret_handshake:{}", addr);

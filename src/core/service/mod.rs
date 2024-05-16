@@ -33,8 +33,8 @@ impl PacketHandler {
             }
         };
 
-        let client = ClientPacketHandler::new( config, rsa.clone(), udp.clone());
-        let server = ServerPacketHandler::new( config, rsa, udp);
+        let client = ClientPacketHandler::new(config, rsa.clone(), udp.clone());
+        let server = ServerPacketHandler::new(config, rsa, udp);
         Self { client, server }
     }
 }
@@ -42,10 +42,13 @@ impl PacketHandler {
 impl PacketHandler {
     pub async fn handle<B: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &mut NetPacket<B>,
         addr: SocketAddr,
         tcp_sender: &Option<Sender<Vec<u8>>>,
-    ) -> Option<NetPacket<Vec<u8>>> {
+    ) -> Option<NetPacket<Vec<u8>>>
+    where
+        NetPacket<B>: Clone,
+    {
         self.handle0(net_packet, addr, tcp_sender)
             .await
             .unwrap_or_else(|e| {
@@ -55,14 +58,17 @@ impl PacketHandler {
     }
     async fn handle0<B: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &mut NetPacket<B>,
         addr: SocketAddr,
         tcp_sender: &Option<Sender<Vec<u8>>>,
-    ) -> Result<Option<NetPacket<Vec<u8>>>> {
+    ) -> Result<Option<NetPacket<Vec<u8>>>>
+    where
+        NetPacket<B>: Clone,
+    {
         if net_packet.is_gateway() {
-            self.server.handle(net_packet, addr, tcp_sender).await
+            self.server.handle( net_packet, addr, tcp_sender).await
         } else {
-            self.client.handle(net_packet, addr)?;
+            self.client.handle(&net_packet, addr)?;
             Ok(None)
         }
     }

@@ -38,7 +38,7 @@ impl ClientPacketHandler {
 impl ClientPacketHandler {
     pub fn handle<B: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        net_packet: NetPacket<B>,
+        net_packet: &NetPacket<B>,
         addr: SocketAddr,
     ) -> Result<()> {
         if let Some(context) = self.cache.get_context(&addr) {
@@ -53,7 +53,7 @@ impl ClientPacketHandler {
     /// 转发到目标地址
     fn handle0<B: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        mut net_packet: NetPacket<B>,
+        mut net_packet: &NetPacket<B>,
         context: Context,
     ) -> Result<()> {
         if net_packet.incr_ttl() > 1 {
@@ -75,7 +75,7 @@ impl ClientPacketHandler {
     }
 }
 
-fn broadcast<B: AsRef<[u8]>>(udp_socket: &UdpSocket, context: Context, net_packet: NetPacket<B>) {
+fn broadcast<B: AsRef<[u8]>>(udp_socket: &UdpSocket, context: Context, net_packet: &NetPacket<B>) {
     for client_info in context.network_info.read().clients.values() {
         send_one(udp_socket, client_info, &net_packet);
     }
